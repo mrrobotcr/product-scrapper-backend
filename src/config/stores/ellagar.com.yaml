@@ -1,0 +1,119 @@
+# Configuración para El Lagar Costa Rica
+domain: ellagar.com
+name: El Lagar
+country: CR
+currency: CRC
+
+# Endpoints de búsqueda
+search:
+  url_template: "https://www.ellagar.com/ECOMMERCE/BusquedaArticulos?search={query}"
+  params:
+    - name: query
+      required: true
+
+# Selectores para extracción de productos en listados
+product_list:
+  container: ".articulos.cuadricula"  # Contenedor principal de productos
+  item: ".item"  # Cada producto individual
+  
+  selectors:
+    # URL del producto (link directo)
+    url: "a[href*='DetalleArticulo']"
+    url_attribute: "href"
+    
+    # Título del producto
+    title: "p.name"
+    title_attribute: "text"
+    
+    # Precio - usar p.precio completo que contiene el span
+    price: "p.precio"
+    price_attribute: "text"  # Formato: ¢113,500.00iva
+    
+    # Imagen
+    image: ".imagen img"
+    image_attribute: "src"
+    
+    # Badge de oferta (opcional) - en el link de la imagen
+    offer_badge: "a .badge"
+    offer_badge_attribute: "text"
+    
+    # Descripción del producto en el card
+    description: ".descripcion"
+    description_attribute: "text"
+
+# Selectores para página de detalle de producto
+product_detail:
+  title: "h2"
+  title_attribute: "text"
+  
+  price: "p:has(> .price-color) .price-color"
+  price_attribute: "text"
+  
+  # Descripción del producto - En tab de descripción
+  description: "[role='tabpanel'] ul li, [role='tabpanel'] ol li"
+  description_attribute: "text"
+  
+  # SKU y CABYS
+  sku: "p:contains('SKU:')"
+  sku_attribute: "text"
+  sku_regex: "SKU:\\s*([\\w\\d-]+)"
+  
+  cabys: "p:contains('CABYS:')"
+  cabys_attribute: "text"
+  cabys_regex: "CABYS:\\s*([\\d]+)"
+  
+  # Categoría
+  category: "p:contains('Categoría:') a"
+  category_attribute: "text"
+  
+  # Imágenes - Carrusel de imágenes
+  images:
+    main: "img[src*='Articulos_MED'], img[src*='Articulos']"
+    main_attribute: "src"
+    thumbnails: ".img-fluid"
+    thumbnails_attribute: "src"
+  
+  # Disponibilidad - El Lagar muestra disponibilidad en el botón de agregar
+  availability: "button:contains('Agregar al Carrito')"
+  availability_attribute: "text"
+  
+  # Marca - No hay selector específico, se puede extraer del título
+  brand:
+    selector: "h2"
+    extraction_method: "regex"
+    regex_pattern: "(MILWAUKEE|CRAFTSMAN|DEWALT|BOSCH|MAKITA|BLACK\\+DECKER|RYOBI|TRUPER|STANLEY|INGCO|EINHELL)"
+
+# Configuración de scraping
+scraping:
+  wait_time: 4000              # Tiempo de espera después de cargar (ms) - Mayor por SPA
+  scroll: true                 # Hacer scroll para cargar lazy-load
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  
+  # Selectores a esperar antes de extraer en LISTADO de búsqueda
+  wait_for_selectors:
+    - ".articulos.cuadricula"               # Esperar el contenedor de productos
+    - ".item"                               # Esperar que aparezcan productos
+    - "p.name"                              # Esperar que aparezcan nombres
+  
+  # Selectores a esperar en PÁGINA DE DETALLE de producto
+  wait_for_selectors_detail:
+    - "h2"                                   # Esperar título del producto
+    - "[role='tabpanel']"                    # Esperar panel de descripción (puede tardar en cargar)
+  
+  # Configuración de paginación
+  pagination:
+    enabled: true
+    next_button: "button:contains('next page'):not([disabled])"
+    next_button_attribute: "click"           # Hacer click en vez de extraer href
+    max_pages: 3                             # Limitar a 3 páginas (~72 productos)
+    page_param: "page"                       # Parámetro en URL (si aplica)
+    current_page_selector: ".pagination li.active"
+    total_pages_selector: ".pagination li:not(.prev):not(.next):last"
+
+# Notas adicionales:
+# - El Lagar usa un SPA (Single Page Application) con Vue.js
+# - Los precios incluyen "iva" al final del texto
+# - Algunos productos tienen badges de "Oferta" y etiquetas de "USO PROFESIONAL"
+# - Las imágenes están en un carrusel con múltiples vistas del producto
+# - La descripción está organizada en lista de características dentro de un tab
+# - El sitio usa lazy-loading para imágenes, requiere scroll

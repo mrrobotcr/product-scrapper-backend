@@ -1,0 +1,103 @@
+# Configuración para Novex Costa Rica
+domain: novex.cr
+name: Novex
+country: CR
+currency: CRC
+
+# Endpoints de búsqueda
+search:
+  url_template: "https://novex.cr/#3250/fullscreen/m=and&q={query}"
+  params:
+    - name: query
+      required: true
+
+# Selectores para extracción de productos en listados
+product_list:
+  container: ".dfd-results-grid"
+  item: ".dfd-card.dfd-card-preset-product"
+  
+  selectors:
+    # URL del producto (link directo)
+    url: "a"
+    url_attribute: "href"
+    
+    # Título del producto
+    title: ".dfd-card-title"
+    title_attribute: "text"
+    
+    # Precio (usar texto visible en vez de data-value por notación científica)
+    price: ".dfd-card-price"
+    price_attribute: "text"  # ₡159,900.00 es más fácil de parsear que 1.599e5
+    
+    # Imagen
+    image: ".dfd-card-thumbnail img"
+    image_attribute: "src"
+    
+    # Descripción (opcional)
+    description: ".dfd-card-description"
+    description_attribute: "text"
+    
+    # Disponibilidad (opcional, está en el data-item como JSON)
+    availability: "button[data-item]"
+    availability_attribute: "data-item"
+
+# Selectores para página de detalle de producto
+product_detail:
+  title: "#variableName"
+  price: "#variablePrice"
+  price_attribute: "text"
+  
+  # Descripción del producto - Selectores comunes en Novex
+  description: "#variableDescription"
+  
+  brand:
+    selector: "#variableName"
+    extraction_method: "regex"
+    regex_pattern: "(MILWAUKEE|CRAFTSMAN|DEWALT|BOSCH|MAKITA|BLACK\\+DECKER|RYOBI|TRUPER|STANLEY)"
+  
+  images:
+    main: "#productInfo-selectedPhoto"
+    main_attribute: "src"
+    thumbnails: ".productInfo-thumbsMain img"
+    thumbnails_attribute: "src"
+  
+  # Especificaciones técnicas - Novex podría tenerlas en tabla o lista
+  specifications: ".productInfo-sectionMain"
+  
+  availability: ".productInfo__stockExclusive"
+  
+  sku: "#variableSku"
+  sku_attribute: "text"
+
+# Configuración de scraping
+scraping:
+  wait_time: 5000              # Tiempo de espera después de cargar (ms) - Mayor por SPA
+  scroll: true                 # Hacer scroll para cargar lazy-load
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+  
+  # Selectores a esperar antes de extraer en LISTADO de búsqueda
+  wait_for_selectors:
+    - ".dfd-results-grid"                    # Esperar el grid de resultados
+    - ".dfd-card.dfd-card-preset-product"   # Esperar que aparezcan productos
+  
+  # Selectores a esperar en PÁGINA DE DETALLE de producto
+  wait_for_selectors_detail:
+    - "#variableName"                        # Esperar nombre del producto
+    - "#variablePrice"                       # Esperar precio del producto
+    - "#productInfo-selectedPhoto"           # Esperar foto principal
+  
+  # Configuración de paginación
+  pagination:
+    enabled: false  # Deshabilitado por SPA, cargar solo primera página
+    next_button: ".dfd-pagination-next"
+    next_button_attribute: "href"
+    max_pages: 1  # Solo primera página (~20-30 productos)
+    page_param: "page"
+    current_page_selector: ".dfd-pagination-current"
+    total_pages_selector: ".dfd-pagination-total"
+
+# Notas adicionales:
+# - Novex usa un SPA (Single Page Application) con hash routing
+# - El precio viene en data-value como número (ej: 1.599e5 = 159900)
+# - La disponibilidad está en formato JSON dentro del atributo data-item
+# - Puede requerir wait_time mayor para que el JS cargue los resultados

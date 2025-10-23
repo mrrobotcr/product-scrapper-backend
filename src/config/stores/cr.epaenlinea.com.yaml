@@ -1,0 +1,87 @@
+# Configuración para EPA en línea Costa Rica
+domain: cr.epaenlinea.com
+name: EPA en línea
+country: CR
+currency: CRC
+
+# Endpoints de búsqueda
+search:
+  url_template: "https://cr.epaenlinea.com/catalogsearch/result/?q={query}"
+  # Parámetros adicionales que se pueden agregar
+  params:
+    - name: query
+      required: true
+
+# Selectores para extracción de productos en listados
+product_list:
+  container: ".ais-Hits-list"  # Contenedor de todos los productos
+  item: ".result-wrapper"       # Cada producto individual
+  
+  # Selectores dentro de cada producto
+  selectors:
+    url: "a.result"              # Link al producto
+    url_attribute: "href"        # Atributo del link
+    
+    title: "h3.result-title"     # Título del producto
+    title_attribute: "text"      # Usar texto del elemento
+    
+    price: "[itemprop='price']"  # Precio
+    price_attribute: "content"   # Atributo content tiene el precio
+    
+    currency: "[itemprop='priceCurrency']"
+    currency_attribute: "content"
+    
+    image: ".result-thumbnail img"
+    image_attribute: "src"
+    
+    availability: ".stock"       # Estado del stock
+    availability_attribute: "text"
+
+# Selectores para página de producto individual (para scraping detallado)
+product_detail:
+  title: ".page-title"
+  price: ".price"
+  price_attribute: "content"
+  
+  # Descripción del producto - Selectores comunes en EPA
+  description: ".product.attribute.description, .product-info-main .value, .product.overview, #tab-description"
+  
+  brand:
+    selector: "table"
+    extraction_method: "table_search"
+    search_label: "Marca"
+  
+  # Especificaciones técnicas - Tabla de atributos adicionales
+  specifications: ".additional-attributes, .product-attributes, table.data-table"
+  
+  availability: ".stock"
+  
+  sku: "[itemprop='sku']"
+  sku_attribute: "content"
+
+# Configuración de scraping
+scraping:
+  wait_time: 3000              # Tiempo de espera después de cargar (ms)
+  scroll: true                 # Hacer scroll para cargar lazy-load
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+  
+  # Selectores a esperar antes de extraer en LISTADO de búsqueda
+  wait_for_selectors:
+    - ".ais-Hits-list"
+    - ".result-wrapper"
+  
+  # Selectores a esperar en PÁGINA DE DETALLE de producto
+  wait_for_selectors_detail:
+    - ".page-title"                          # Esperar título del producto
+    - ".price"                               # Esperar precio
+    - ".product.attribute.description"       # Esperar descripción
+  
+  # Configuración de paginación
+  pagination:
+    enabled: true
+    next_button: ".ais-Pagination-link[aria-label='Next']"  # Selector del botón siguiente
+    next_button_attribute: "href"                            # Atributo con la URL
+    max_pages: 2                                             # Limitar a 2 páginas (~64 productos) para búsquedas abiertas
+    page_param: "page"                                       # Parámetro en URL (?page=2)
+    current_page_selector: ".ais-Pagination-item--selected"  # Página actual (opcional)
+    total_pages_selector: ".ais-Pagination-item:last-child"  # Total de páginas (opcional)

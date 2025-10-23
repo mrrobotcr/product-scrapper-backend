@@ -1,0 +1,67 @@
+### Health Check
+GET http://localhost:3001/health
+
+###
+
+### Scraping Service Status
+GET http://localhost:3001/api/scrape/status
+
+###
+
+### Scrape Single URL - Costa Rica Store Example
+POST http://localhost:3001/api/scrape/url
+Content-Type: application/json
+
+{
+  "url": "https://cr.epaenlinea.com/catalogsearch/result/?q=taladro",
+  "options": {
+    "timeout": 172800000
+  }
+}
+
+###
+
+### Search for Products
+POST http://localhost:3001/api/scrape/search
+Content-Type: application/json
+
+{
+  "url": "https://www.example-store.com/search",
+  "searchQuery": "laptop",
+  "options": {
+    "waitFor": 3000
+  }
+}
+
+###
+
+### Crawl Site (Multiple Pages)
+POST http://localhost:3001/api/scrape/crawl
+Content-Type: application/json
+
+{
+  "url": "https://www.example-store.com",
+  "options": {
+    "timeout": 60000
+  }
+}
+
+###
+
+### Test with Invalid URL (should fail validation)
+POST http://localhost:3001/api/scrape/url
+Content-Type: application/json
+
+{
+  "url": "not-a-valid-url"
+}
+
+###
+
+### Test with Missing URL (should fail validation)
+POST http://localhost:3001/api/scrape/url
+Content-Type: application/json
+
+{
+  "searchQuery": "laptop"
+}
