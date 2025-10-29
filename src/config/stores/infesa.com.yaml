@@ -1,0 +1,85 @@
+# Configuración para Infesa Costa Rica
+domain: infesa.com
+name: Infesa
+country: CR
+currency: CRC
+
+# Endpoints de búsqueda
+search:
+  url_template: "https://www.infesa.com/productosx.php?busqueda={query}&buscador=Buscar"
+  params:
+    - name: query
+      required: true
+
+# Selectores para extracción de productos en listados
+product_list:
+  container: "table.borde"  # Tabla principal de productos
+  item: "td.numeros table"  # Cada tabla de producto individual
+  
+  selectors:
+    # URL del producto (no hay páginas de detalle)
+    # url: 
+    # url_attribute: "href"
+    
+    # Título del producto
+    title: "tbody tr:first-child td"
+    title_attribute: "text"
+    
+    # Precio regular
+    price: "tbody tr td:contains('Regular')"
+    price_attribute: "text"
+    
+    # Precio de oferta (si existe)
+    offer_price: "tbody tr td strong:contains('Oferta')"
+    offer_price_attribute: "text"
+    
+    # Imagen
+    image: "img[onclick]"
+    image_attribute: "src"
+    
+    # SKU (código del producto)
+    sku: "tbody tr td:contains('Código')"
+    sku_attribute: "text"
+    sku_regex: "Código\\s*([\\w\\d-]+)"
+    
+    # Validez de la oferta (si aplica)
+    validity: "tbody tr td:contains('Válido del')"
+    validity_attribute: "text"
+
+# Selectores para página de detalle de producto (no aplica, solo listado)
+product_detail:
+  # No hay páginas de detalle en este sitio
+  # ESTRATEGIA ALTERNATIVA: Usar Gemini AI para enriquecer productos
+  # Se usará gemini-2.5-flash-lite con Google Search grounding
+  # Input: imagen del producto + título
+  # Output: descripción detallada + especificaciones técnicas
+  # Ver: src/services/gemini.service.ts
+
+# Configuración de scraping
+scraping:
+  wait_time: 2000              # Tiempo de espera después de cargar (ms)
+  scroll: false                 # No requiere scroll para lazy-load
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  
+  # Selectores a esperar antes de extraer en LISTADO de búsqueda
+  wait_for_selectors:
+    - "table.borde"               # Esperar la tabla de productos
+  
+  # Selectores a esperar en PÁGINA DE DETALLE de producto (no aplica)
+  wait_for_selectors_detail: []
+  
+  # Configuración de paginación
+  pagination:
+    enabled: true
+    next_button: "a:contains('Siguiente')"
+    next_button_attribute: "href"
+    max_pages: 5                             # Limitar a 5 páginas para evitar sobrecarga
+    page_param: "pagina"                       # Parámetro en URL para páginas
+
+# Notas adicionales:
+# - Infesa muestra productos en una tabla con celdas que contienen tablas anidadas
+# - Cada producto tiene título, imagen, precio regular y/o oferta, código SKU
+# - Las ofertas tienen fechas de validez
+# - No hay páginas de detalle individuales, solo listado de búsqueda
+# - Los precios están en colones costarricenses (CRC)
+# - El sitio tiene paginación con un enlace "Siguiente" que añade el parámetro "pagina"
