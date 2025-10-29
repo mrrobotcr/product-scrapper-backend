@@ -1,6 +1,6 @@
 import { getStoreConfigService } from './store-config.service';
 import { getScraperService } from './scraper.service';
-import { getOpenAIService } from './openai.service';
+import { getLLMService } from './llm.service';
 import { SimpleProduct } from '../types/product.types';
 
 export interface StoreSearchResult {
@@ -39,7 +39,7 @@ export interface SearchOptions {
 export class MultiStoreSearchService {
   private configService = getStoreConfigService();
   private scraperService = getScraperService();
-  private openaiService = getOpenAIService();
+  private llmService = getLLMService();
 
   /**
    * Busca en todas las tiendas configuradas
@@ -148,7 +148,7 @@ export class MultiStoreSearchService {
           }
 
           try {
-            const filtered = await this.openaiService.filterProductsByRelevance(
+            const filtered = await this.llmService.filterProductsByRelevance(
               storeResult.products,
               query,
               options.topN!
@@ -180,7 +180,7 @@ export class MultiStoreSearchService {
           }
 
           try {
-            const filtered = await this.openaiService.applyNaturalLanguageFilter(
+            const filtered = await this.llmService.applyNaturalLanguageFilter(
               storeResult.products,
               options.filter!
             );
@@ -202,14 +202,14 @@ export class MultiStoreSearchService {
 
     // 7. Ordenar productos por similaridad entre tiendas
     console.log(`\n🤖 Ordenando productos por similaridad entre tiendas...`);
-    const sortedResults = await this.openaiService.sortProductsBySimilarity(
+    const sortedResults = await this.llmService.sortProductsBySimilarity(
       filteredResults.map(r => ({ store: r.store, products: r.products })),
       query
     );
 
     // Actualizar resultados con el nuevo orden
     const finalResults = filteredResults.map(r => {
-      const sorted = sortedResults.find(s => s.store === r.store);
+      const sorted = sortedResults.find((s: { store: string; products: SimpleProduct[] }) => s.store === r.store);
       return sorted ? { ...r, products: sorted.products } : r;
     });
 

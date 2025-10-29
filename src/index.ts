@@ -8,6 +8,7 @@ import { storesRouter } from './routes/stores.routes';
 import { filterRouter } from './routes/filter.routes';
 import { searchRouter } from './routes/search.routes';
 import { compareRouter } from './routes/compare.routes';
+import { llmConfigRouter } from './routes/llm-config.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/search', searchRouter);      // 🆕 Búsqueda multi-tienda (principal)
 app.use('/api/compare', compareRouter);    // 🆕 Comparación de productos con IA
+app.use('/api/llm-config', llmConfigRouter); // 🆕 Configuración de LLM providers
 app.use('/api/scrape', scrapeRouter);      // Legacy: scraping directo
 app.use('/api/stores', storesRouter);      // Gestión de tiendas
 app.use('/api/filter', filterRouter);      // Filtrado post-scraping
