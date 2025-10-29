@@ -10,6 +10,7 @@ export interface CompareRequest {
     storeName: string;
     product_name: string;
     price: number;
+    image?: string;  // Opcional: para tiendas sin detalle (ej: infesa.com)
   }>;
 }
 
@@ -21,7 +22,9 @@ export interface CompareResponse {
       store: string;
       price: number;
       url: string;
-      description?: string;
+      description?: string | string[];  // Puede ser texto o lista
+      brand?: string;
+      availability?: string;
       specifications?: Record<string, any>;
       images?: string[];
     }>;
@@ -38,6 +41,12 @@ export interface CompareResponse {
         best_value: string;
         price_range: string;
       };
+      product_badges?: Array<{
+        product_index: number;
+        badge_label: string;
+        badge_type: string;
+        badge_color: string;
+      }>;
       specifications_comparison?: Record<string, any>;
     };
   };

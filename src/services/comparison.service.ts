@@ -1,5 +1,6 @@
 import { PlaywrightService } from './playwright.service';
 import { StoreConfigService } from './store-config.service';
+import { getGeminiService } from './gemini.service';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
 
@@ -8,6 +9,7 @@ export interface ProductToCompare {
   storeName: string;
   product_name: string;
   price: number;
+  image?: string;  // Para tiendas sin detalle (ej: infesa.com)
 }
 
 export interface DetailedProduct {
@@ -108,7 +110,57 @@ export class ComparisonService {
       // Obtener configuración de la tienda usando la URL
       const storeConfig = this.storeConfigService.getConfigFromUrl(product.url);
 
-      // Scrapear la página del producto (usar selectores de DETALLE, no de listado)
+      // ESTRATEGIA ESPECIAL PARA INFESA.COM (sin páginas de detalle)
+      // Detectar si es infesa.com por el dominio
+      if (product.url.includes('infesa.com') && product.image) {
+        console.log(`  🤖 Usando Gemini para enriquecer producto de infesa.com...`);
+        
+        try {
+          const gemini = getGeminiService();
+          const enrichResult = await gemini.getProductDetailsFromImage(
+            product.image,
+            product.product_name
+          );
+
+          if (enrichResult.success && enrichResult.details) {
+            console.log(`  ✅ Producto enriquecido con Gemini`);
+            
+            // Convertir especificaciones de Gemini a formato compatible
+            const specifications: Record<string, any> = enrichResult.details.specifications || {};
+            
+            return {
+              name: product.product_name,
+              store: product.storeName,
+              price: product.price,
+              url: product.url,
+              description: enrichResult.details.description,
+              brand: specifications.marca || specifications.Marca || undefined,
+              availability: 'Consultar disponibilidad',
+              specifications,
+              images: [product.image]
+            };
+          } else {
+            console.warn(`  ⚠️ No se pudo enriquecer con Gemini: ${enrichResult.error}`);
+          }
+        } catch (geminiError) {
+          console.error(`  ❌ Error usando Gemini:`, geminiError);
+        }
+        
+        // Si Gemini falla, retornar datos básicos
+        return {
+          name: product.product_name,
+          store: product.storeName,
+          price: product.price,
+          url: product.url,
+          description: 'Producto de infesa.com - información básica',
+          brand: undefined,
+          availability: 'Consultar disponibilidad',
+          specifications: {},
+          images: product.image ? [product.image] : []
+        };
+      }
+
+      // FLUJO NORMAL: Scrapear página de detalle
       const scraped = await this.playwrightService.scrapeUrl(product.url, {
         waitTime: storeConfig?.scraping?.wait_time || 3000,
         waitForSelectors: storeConfig?.scraping?.wait_for_selectors_detail || storeConfig?.scraping?.wait_for_selectors
