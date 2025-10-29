@@ -85,20 +85,18 @@ product_detail:
 
 # Configuración de scraping
 scraping:
-  wait_time: 4000              # Tiempo de espera después de cargar (ms) - Mayor por SPA
+  wait_time: 2500              # Reducido de 4000ms - Suficiente para SPA + lazy-load
   scroll: true                 # Hacer scroll para cargar lazy-load
   user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
   
   # Selectores a esperar antes de extraer en LISTADO de búsqueda
+  # OPTIMIZADO: Solo esperar el selector más crítico (.item) en vez de 3
   wait_for_selectors:
-    - ".articulos.cuadricula"               # Esperar el contenedor de productos
-    - ".item"                               # Esperar que aparezcan productos
-    - "p.name"                              # Esperar que aparezcan nombres
+    - ".item"                               # Selector más confiable para productos
   
   # Selectores a esperar en PÁGINA DE DETALLE de producto
   wait_for_selectors_detail:
     - "h2"                                   # Esperar título del producto
-    - "[role='tabpanel']"                    # Esperar panel de descripción (puede tardar en cargar)
   
   # Configuración de paginación
   pagination:
