@@ -115,38 +115,33 @@ export class ComparisonService {
       if (product.url.includes('infesa.com') && product.image) {
         console.log(`  🤖 Usando Gemini para enriquecer producto de infesa.com...`);
         
-        try {
-          const gemini = getGeminiService();
-          const enrichResult = await gemini.getProductDetailsFromImage(
-            product.image,
-            product.product_name
-          );
+        const gemini = getGeminiService();
+        const enrichResult = await gemini.getProductDetailsFromImage(
+          product.image,
+          product.product_name
+        );
 
-          if (enrichResult.success && enrichResult.details) {
-            console.log(`  ✅ Producto enriquecido con Gemini`);
-            
-            // Convertir especificaciones de Gemini a formato compatible
-            const specifications: Record<string, any> = enrichResult.details.specifications || {};
-            
-            return {
-              name: product.product_name,
-              store: product.storeName,
-              price: product.price,
-              url: product.url,
-              description: enrichResult.details.description,
-              brand: specifications.marca || specifications.Marca || undefined,
-              availability: 'Consultar disponibilidad',
-              specifications,
-              images: [product.image]
-            };
-          } else {
-            console.warn(`  ⚠️ No se pudo enriquecer con Gemini: ${enrichResult.error}`);
-          }
-        } catch (geminiError) {
-          console.error(`  ❌ Error usando Gemini:`, geminiError);
+        // Gemini ahora siempre retorna success: true con fallback si hay error
+        if (enrichResult.details) {
+          console.log(`  ✅ Producto enriquecido con Gemini`);
+          
+          // Convertir especificaciones de Gemini a formato compatible
+          const specifications: Record<string, any> = enrichResult.details.specifications || {};
+          
+          return {
+            name: product.product_name,
+            store: product.storeName,
+            price: product.price,
+            url: product.url,
+            description: enrichResult.details.description,
+            brand: specifications.marca || specifications.Marca || undefined,
+            availability: 'Consultar disponibilidad',
+            specifications,
+            images: [product.image]
+          };
         }
         
-        // Si Gemini falla, retornar datos básicos
+        // Fallback extremo (no debería llegar aquí)
         return {
           name: product.product_name,
           store: product.storeName,

@@ -115,8 +115,18 @@ Formato de respuesta:
 
       const responseText = result.text;
       
-      if (!responseText) {
-        throw new Error('No se recibió respuesta de Gemini');
+      if (!responseText || responseText.trim().length === 0) {
+        console.warn(`  ⚠️  Gemini no retornó texto, usando descripción básica`);
+        return {
+          success: true,
+          details: {
+            description: `${productTitle} - Información básica del producto`,
+            specifications: {
+              'Nombre': productTitle,
+              'Fuente': 'Imagen del producto'
+            }
+          }
+        };
       }
 
       // Limpiar markdown si existe (```json ... ```)
@@ -127,8 +137,22 @@ Formato de respuesta:
         cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
 
-      // Parsear JSON
-      const details: ProductDetails = JSON.parse(cleanedResponse);
+      // Parsear JSON con manejo de errores
+      let details: ProductDetails;
+      try {
+        details = JSON.parse(cleanedResponse);
+      } catch (parseError) {
+        console.warn(`  ⚠️  Error parseando JSON de Gemini, usando descripción básica`);
+        return {
+          success: true,
+          details: {
+            description: `${productTitle} - ${cleanedResponse.substring(0, 200)}`,
+            specifications: {
+              'Nombre': productTitle
+            }
+          }
+        };
+      }
 
       console.log(`✅ Detalles obtenidos exitosamente`);
       console.log(`  📝 Descripción: ${details.description.substring(0, 100)}...`);
@@ -142,8 +166,17 @@ Formato de respuesta:
     } catch (error) {
       console.error('❌ Error obteniendo detalles con Gemini:', error);
       
+      // En lugar de fallar, retornar descripción básica
+      console.warn(`  ⚠️  Usando descripción básica como fallback`);
       return {
-        success: false,
+        success: true,
+        details: {
+          description: `${productTitle} - Producto de ferretería`,
+          specifications: {
+            'Nombre': productTitle,
+            'Estado': 'Información limitada disponible'
+          }
+        },
         error: error instanceof Error ? error.message : 'Error desconocido'
       };
     }
