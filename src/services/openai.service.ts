@@ -228,10 +228,14 @@ Responde SOLO con JSON válido (sin markdown):
         sp.products.map(p => ({ ...p, storeName: sp.store }))
       );
 
-      if (allProducts.length === 0) return storeProducts;
+      if (allProducts.length === 0) {
+        console.log(`  ⚠️  Sin productos para ordenar`);
+        return storeProducts;
+      }
 
-      // Limitar a 100 productos máximo para el LLM
-      const productsToSort = allProducts.slice(0, 100);
+      // Limitar a 50 productos máximo para el LLM (para evitar timeouts)
+      const productsToSort = allProducts.slice(0, 50);
+      console.log(`  📊 Ordenando ${productsToSort.length} productos con gpt-4o-mini...`);
 
       const productsList = productsToSort.map((p, i) => 
         `${i + 1}. [${p.storeName}] ${p.product_name} - ₡${p.price.toLocaleString()}`
@@ -252,22 +256,29 @@ Retorna JSON con índices ordenados por similaridad:
   "reasoning": "criterio de agrupación usado"
 }`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Agrupa productos similares de diferentes tiendas. Sé eficiente.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        response_format: { type: 'json_object' }
-      });
+      const completion = await Promise.race([
+        this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'Agrupa productos similares de diferentes tiendas. Sé eficiente.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.2,
+          response_format: { type: 'json_object' }
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ordenando productos')), 30000)
+        )
+      ]);
 
+      console.log(`  ✅ Respuesta recibida de OpenAI`);
+      
       const responseText = completion.choices[0]?.message?.content;
       
       if (!responseText) {
@@ -277,6 +288,8 @@ Retorna JSON con índices ordenados por similaridad:
 
       const result = JSON.parse(responseText);
       const orderedIndices: number[] = result.ordered_indices || [];
+      
+      console.log(`  🔄 Reordenando ${orderedIndices.length} productos...`);
 
       // Reordenar productos según índices
       const sortedProducts = orderedIndices
@@ -303,7 +316,11 @@ Retorna JSON con índices ordenados por similaridad:
       return result_by_store;
 
     } catch (error) {
-      console.error('❌ Error ordenando productos:', error);
+      if (error instanceof Error && error.message.includes('Timeout')) {
+        console.warn('⏱️  Timeout ordenando productos (>30s), usando orden original');
+      } else {
+        console.error('❌ Error ordenando productos:', error instanceof Error ? error.message : error);
+      }
       return storeProducts; // Retornar orden original en caso de error
     }
   }
