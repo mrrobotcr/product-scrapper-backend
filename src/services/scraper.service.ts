@@ -101,6 +101,7 @@ export class ScraperService {
       const scrapedContent = await this.playwrightService.scrapeUrl(currentUrl, {
         waitTime: options?.waitFor || config.scraping.wait_time,
         waitForSelectors: config.scraping.wait_for_selectors,
+        scroll: config.scraping.scroll !== false,  // Respetar configuración de scroll
       });
 
       // 2. Extraer productos de esta página

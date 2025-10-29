@@ -41,6 +41,7 @@ export class PlaywrightService {
     waitTime?: number; 
     selector?: string;
     waitForSelectors?: string[];  // Múltiples selectores para SPAs
+    scroll?: boolean;  // Si hacer scroll o no
   }): Promise<ScrapedContent> {
     await this.initialize();
 
@@ -57,30 +58,21 @@ export class PlaywrightService {
     const page: Page = await context.newPage();
 
     try {
-      // Estrategia más robusta: intentar diferentes waitUntil
-      let navigationSuccess = false;
-      const strategies = ['load', 'domcontentloaded', 'networkidle'] as const;
-      
-      for (const strategy of strategies) {
-        try {
-          this.logger.debug(`Intentando strategy: ${strategy}`);
-          await page.goto(url, {
-            waitUntil: strategy,
-            timeout: strategy === 'networkidle' ? 45000 : 60000
-          });
-          navigationSuccess = true;
-          this.logger.debug(`Navegación exitosa con: ${strategy}`);
-          break;
-        } catch (navError) {
-          this.logger.debug(`Strategy ${strategy} falló`);
-          if (strategy === strategies[strategies.length - 1]) {
-            throw navError;
-          }
-        }
-      }
-
-      if (!navigationSuccess) {
-        throw new Error('No se pudo cargar la página con ninguna estrategia');
+      // Estrategia optimizada: usar domcontentloaded con timeout corto
+      // Es más rápido y suficiente para la mayoría de SPAs
+      try {
+        await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000  // 30 segundos máximo
+        });
+        this.logger.debug('Navegación exitosa con domcontentloaded');
+      } catch (navError) {
+        // Fallback: intentar con networkidle solo si falla
+        this.logger.debug('Intentando fallback con networkidle');
+        await page.goto(url, {
+          waitUntil: 'networkidle',
+          timeout: 30000
+        });
       }
 
       // Esperar selectores específicos si se proporcionan (importante para SPAs)
@@ -100,9 +92,14 @@ export class PlaywrightService {
         await page.waitForTimeout(waitTime);
       }
 
-      // Hacer scroll para cargar productos lazy-loaded
-      this.logger.debug('Haciendo scroll...');
-      await this.autoScroll(page);
+      // Hacer scroll solo si está habilitado (por defecto true para compatibilidad)
+      const shouldScroll = options?.scroll !== false;
+      if (shouldScroll) {
+        this.logger.debug('Haciendo scroll...');
+        await this.autoScroll(page);
+      } else {
+        this.logger.debug('Scroll deshabilitado');
+      }
 
       // Esperar selector específico adicional si se proporciona
       if (options?.selector) {
@@ -113,9 +110,6 @@ export class PlaywrightService {
           this.logger.debug(`Selector adicional no encontrado: ${options.selector}`);
         }
       }
-      
-      // Esperar un poco más después del scroll para que el contenido se estabilice
-      await page.waitForTimeout(1000);
 
       // Obtener el HTML completo
       const html = await page.content();
@@ -149,28 +143,32 @@ export class PlaywrightService {
   }
 
   /**
-   * Auto-scroll para cargar contenido lazy-loaded
+   * Auto-scroll optimizado para cargar contenido lazy-loaded
    */
   private async autoScroll(page: Page): Promise<void> {
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
         let totalHeight = 0;
-        const distance = 100;
+        const distance = 200;  // Scroll más rápido (antes 100)
+        const maxScrolls = 20;  // Límite de scrolls para evitar páginas infinitas
+        let scrollCount = 0;
+        
         const timer = setInterval(() => {
           const scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
           totalHeight += distance;
+          scrollCount++;
 
-          if (totalHeight >= scrollHeight) {
+          if (totalHeight >= scrollHeight || scrollCount >= maxScrolls) {
             clearInterval(timer);
             resolve();
           }
-        }, 100);
+        }, 50);  // Más rápido (antes 100ms)
       });
     });
     
-    // Esperar un poco después del scroll
-    await page.waitForTimeout(2000);
+    // Esperar menos después del scroll
+    await page.waitForTimeout(500);  // Reducido de 2000ms
   }
 
   /**

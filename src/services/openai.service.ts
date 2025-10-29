@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { SimpleProduct } from '../types/product.types';
+import { getGeminiService } from './gemini.service';
 
 export interface FilterResult {
   products: SimpleProduct[];
@@ -10,6 +11,7 @@ export interface FilterResult {
 
 export class OpenAIService {
   private openai: OpenAI;
+  private gemini = getGeminiService();
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -20,16 +22,16 @@ export class OpenAIService {
   }
 
   /**
-   * Filtra y rankea productos por relevancia usando GPT-4
+   * Filtra y rankea productos por relevancia usando Gemini Flash Lite
    * Retorna los N productos más relevantes según la query del usuario
    */
   async filterProductsByRelevance(
     products: SimpleProduct[],
     query: string,
-    topN: number = 10,
+    topN: number = 15,
     customFilter?: string
   ): Promise<FilterResult> {
-    console.log(`🤖 Filtrando ${products.length} productos con gpt-4o-mini...`);
+    console.log(`🤖 Filtrando ${products.length} productos con Gemini...`);
     console.log(`  🔍 Query: "${query}"`);
     console.log(`  🎯 Top: ${topN} productos`);
 
@@ -64,32 +66,35 @@ Selecciona los ${topN} MÁS relevantes:
 
 ${productsList}
 
-Retorna JSON: {"selected_indices": [números], "reasoning": "razón corta"}`;
+Retorna SOLO JSON válido sin markdown:
+{"selected_indices": [números del 1 al ${productsToAnalyze.length}], "reasoning": "razón corta"}`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Selecciona productos relevantes según la búsqueda. Sé rápido y preciso.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' }
+      // Usar Gemini 2.5 Flash (más rápido que GPT-4o-mini)
+      const result = await this.gemini['ai'].models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ text: prompt }],
+        config: {
+          temperature: 0.3,
+          responseMimeType: 'application/json'
+        }
       });
 
-      const responseText = completion.choices[0]?.message?.content;
+      const responseText = result.text;
       
       if (!responseText) {
-        throw new Error('No se recibió respuesta de GPT-4');
+        throw new Error('No se recibió respuesta de Gemini');
       }
 
-      const result = JSON.parse(responseText);
-      const selectedIndices: number[] = result.selected_indices || [];
+      // Limpiar markdown si existe
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const parsedResult = JSON.parse(cleanedResponse);
+      const selectedIndices: number[] = parsedResult.selected_indices || [];
 
       // Obtener los productos seleccionados del array analizado (ajustar índices base-1 a base-0)
       const filteredProducts = selectedIndices
@@ -98,18 +103,18 @@ Retorna JSON: {"selected_indices": [números], "reasoning": "razón corta"}`;
         .slice(0, topN) // Asegurar que no exceda topN
         .sort((a, b) => a.price - b.price); // Ordenar por precio (menor a mayor)
 
-      console.log(`✅ gpt-4o-mini seleccionó ${filteredProducts.length} productos más relevantes`);
-      console.log(`  💡 ${result.reasoning}`);
+      console.log(`✅ Gemini seleccionó ${filteredProducts.length} productos más relevantes`);
+      console.log(`  💡 ${parsedResult.reasoning}`);
       console.log(`  💰 Ordenados por precio: ₡${filteredProducts[0]?.price.toLocaleString()} - ₡${filteredProducts[filteredProducts.length - 1]?.price.toLocaleString()}`);
 
       return {
         products: filteredProducts,
-        summary: result.reasoning || `Seleccionados ${filteredProducts.length} productos más relevantes`,
+        summary: parsedResult.reasoning || `Seleccionados ${filteredProducts.length} productos más relevantes`,
         totalFiltered: filteredProducts.length,
         originalCount: products.length
       };
     } catch (error) {
-      console.error('❌ Error filtrando con GPT-4:', error);
+      console.error('❌ Error filtrando con Gemini:', error);
       // En caso de error, retornar los primeros N productos
       return {
         products: products.slice(0, topN),
@@ -213,14 +218,14 @@ Responde SOLO con JSON válido (sin markdown):
   }
 
   /**
-   * Ordena productos de múltiples tiendas por similaridad de título
-   * Agrupa productos similares de diferentes tiendas juntos
+   * Ordena productos de múltiples tiendas por similaridad de título usando Gemini Flash Lite
+   * Agrupa productos similares de diferentes tiendas juntos (mucho más rápido que GPT-4)
    */
   async sortProductsBySimilarity(
     storeProducts: Array<{ store: string; products: SimpleProduct[] }>,
     query: string
   ): Promise<Array<{ store: string; products: SimpleProduct[] }>> {
-    console.log(`🤖 Ordenando productos por similaridad entre tiendas...`);
+    console.log(`🤖 Ordenando productos por similaridad entre tiendas con Gemini Flash Lite...`);
 
     try {
       // Crear lista de todos los productos con su tienda
@@ -233,9 +238,9 @@ Responde SOLO con JSON válido (sin markdown):
         return storeProducts;
       }
 
-      // Limitar a 50 productos máximo para el LLM (para evitar timeouts)
+      // Limitar a 50 productos máximo
       const productsToSort = allProducts.slice(0, 50);
-      console.log(`  📊 Ordenando ${productsToSort.length} productos con gpt-4o-mini...`);
+      console.log(`  📊 Ordenando ${productsToSort.length} productos...`);
 
       const productsList = productsToSort.map((p, i) => 
         `${i + 1}. [${p.storeName}] ${p.product_name} - ₡${p.price.toLocaleString()}`
@@ -250,44 +255,41 @@ ${productsList}
 
 OBJETIVO: Agrupar productos similares (ej: "taladro dewalt 3/8" de diferentes tiendas deben estar juntos).
 
-Retorna JSON con índices ordenados por similaridad:
+Retorna SOLO JSON válido sin markdown:
 {
   "ordered_indices": [array de números del 1 al ${productsToSort.length}],
   "reasoning": "criterio de agrupación usado"
 }`;
 
-      const completion = await Promise.race([
-        this.openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'Agrupa productos similares de diferentes tiendas. Sé eficiente.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
+      // Usar Gemini Flash Lite (mucho más rápido)
+      const result = await this.gemini['ai'].models.generateContent({
+        model: 'gemini-2.5-flash-lite',
+        contents: [{ text: prompt }],
+        config: {
           temperature: 0.2,
-          response_format: { type: 'json_object' }
-        }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout ordenando productos')), 30000)
-        )
-      ]);
+          responseMimeType: 'application/json'
+        }
+      });
 
-      console.log(`  ✅ Respuesta recibida de OpenAI`);
+      console.log(`  ✅ Respuesta recibida de Gemini`);
       
-      const responseText = completion.choices[0]?.message?.content;
+      const responseText = result.text;
       
       if (!responseText) {
         console.warn('⚠️  No se pudo ordenar, manteniendo orden original');
         return storeProducts;
       }
 
-      const result = JSON.parse(responseText);
-      const orderedIndices: number[] = result.ordered_indices || [];
+      // Limpiar markdown si existe
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const parsedResult = JSON.parse(cleanedResponse);
+      const orderedIndices: number[] = parsedResult.ordered_indices || [];
       
       console.log(`  🔄 Reordenando ${orderedIndices.length} productos...`);
 
@@ -297,7 +299,7 @@ Retorna JSON con índices ordenados por similaridad:
         .filter(p => p !== undefined);
 
       console.log(`✅ Productos ordenados por similaridad`);
-      console.log(`  💡 ${result.reasoning}`);
+      console.log(`  💡 ${parsedResult.reasoning}`);
 
       // Reconstruir la estructura por tienda con el nuevo orden
       const result_by_store: Array<{ store: string; products: SimpleProduct[] }> = [];
@@ -316,11 +318,7 @@ Retorna JSON con índices ordenados por similaridad:
       return result_by_store;
 
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Timeout')) {
-        console.warn('⏱️  Timeout ordenando productos (>30s), usando orden original');
-      } else {
-        console.error('❌ Error ordenando productos:', error instanceof Error ? error.message : error);
-      }
+      console.error('❌ Error ordenando productos con Gemini:', error instanceof Error ? error.message : error);
       return storeProducts; // Retornar orden original en caso de error
     }
   }

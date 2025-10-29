@@ -61,8 +61,8 @@ product_detail:
 
 # Configuración de scraping
 scraping:
-  wait_time: 3000              # Tiempo de espera después de cargar (ms)
-  scroll: true                 # Hacer scroll para cargar lazy-load
+  wait_time: 2000              # Reducido para velocidad
+  scroll: true                 # Necesario para lazy-load
   user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
   
   # Selectores a esperar antes de extraer en LISTADO de búsqueda
