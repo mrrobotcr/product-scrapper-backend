@@ -152,7 +152,7 @@ export class SelectorExtractorService {
    * NO incluye: availability (solo para vistas detalladas)
    */
   normalizeProducts(products: ExtractedProduct[], baseUrl: string): ExtractedProduct[] {
-    return products.map(product => {
+    const normalized = products.map(product => {
       const normalized: any = {
         url: this.makeAbsoluteUrl(product.url, baseUrl),
         product_name: product.product_name.trim(),
@@ -173,6 +173,42 @@ export class SelectorExtractorService {
 
       return normalized as ExtractedProduct;
     });
+
+    // Deduplicar productos por nombre similar + precio similar
+    return this.deduplicateProducts(normalized);
+  }
+
+  /**
+   * Elimina productos duplicados basándose en similitud de nombre y precio
+   * Mantiene el primer producto encontrado de cada grupo de duplicados
+   */
+  private deduplicateProducts(products: ExtractedProduct[]): ExtractedProduct[] {
+    const seen = new Set<string>();
+    const deduplicated: ExtractedProduct[] = [];
+
+    for (const product of products) {
+      // Crear una clave basada en nombre normalizado + rango de precio
+      // Esto permite detectar duplicados incluso si el precio varía ligeramente
+      const normalizedName = product.product_name
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Agrupar precios en rangos de ±10% para detectar variaciones
+      const priceRange = Math.floor(product.price / 100) * 100;
+      const key = `${normalizedName}|${priceRange}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(product);
+      }
+    }
+
+    if (deduplicated.length < products.length) {
+      console.log(`🔄 Deduplicación: ${products.length} → ${deduplicated.length} productos (${products.length - deduplicated.length} duplicados removidos)`);
+    }
+
+    return deduplicated;
   }
 }
 
