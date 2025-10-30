@@ -226,6 +226,245 @@ export class MultiStoreSearchService {
   }
 
   /**
+   * FASE 1: Solo scraping - devuelve productos sin filtrar ni ordenar
+   */
+  async scrapeAllStores(
+    query: string,
+    options: { maxPages?: number }
+  ): Promise<MultiStoreSearchResult> {
+    const startTime = Date.now();
+    
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`🔍 FASE 1: SCRAPING - "${query}"`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    // 1. Obtener todas las tiendas disponibles
+    const availableStores = this.configService.listAvailableStores();
+    console.log(`📦 Tiendas disponibles: ${availableStores.length}`);
+    
+    // 2. Generar URLs de búsqueda
+    const searchUrls: Array<{ domain: string; url: string; name: string }> = [];
+    
+    for (const domain of availableStores) {
+      const searchUrl = this.configService.buildSearchUrl(domain, query);
+      const config = this.configService.getConfig(domain);
+      
+      if (searchUrl && config) {
+        searchUrls.push({ domain, url: searchUrl, name: config.name });
+      }
+    }
+
+    // 3. Scrapear todas las tiendas en paralelo
+    console.log(`⚡ Scraping ${searchUrls.length} tiendas en paralelo...\n`);
+    
+    const scrapePromises = searchUrls.map(async ({ domain, url, name }) => {
+      const storeStartTime = Date.now();
+      
+      try {
+        const scrapeOptions = options.maxPages ? { maxPages: options.maxPages } : undefined;
+        const result = await this.scraperService.scrapeProducts(url, scrapeOptions);
+        const duration = Date.now() - storeStartTime;
+        
+        console.log(`✅ ${name}: ${result.products.length} productos (${(duration / 1000).toFixed(2)}s)`);
+        
+        return {
+          store: name,
+          domain,
+          products: result.products,
+          count: result.products.length,
+          success: true,
+          searchUrl: url,
+          duration
+        } as StoreSearchResult;
+      } catch (error) {
+        const duration = Date.now() - storeStartTime;
+        console.error(`❌ ${name}: Error - ${error instanceof Error ? error.message : 'Unknown'}`);
+        
+        return {
+          store: name,
+          domain,
+          products: [],
+          count: 0,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          searchUrl: url,
+          duration
+        } as StoreSearchResult;
+      }
+    });
+
+    const storeResults = await Promise.all(scrapePromises);
+
+    const successfulStores = storeResults.filter(r => r.success).length;
+    const totalProducts = storeResults.reduce((sum, r) => sum + r.count, 0);
+    const duration = Date.now() - startTime;
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`✅ FASE 1 completada en ${(duration / 1000).toFixed(2)}s`);
+    console.log(`📊 Productos scrapeados: ${totalProducts}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    return {
+      search: query,
+      totalStores: storeResults.length,
+      successfulStores,
+      totalProducts,
+      stores: storeResults,
+      duration,
+      filtered: false
+    };
+  }
+
+  /**
+   * FASE 2: Filtrado - aplica filtros inteligentes con LLM
+   */
+  async filterProducts(
+    query: string,
+    stores: StoreSearchResult[],
+    options: { topN?: number; filter?: string }
+  ): Promise<MultiStoreSearchResult> {
+    const startTime = Date.now();
+    
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`🤖 FASE 2: FILTRADO - "${query}"`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    let filteredResults = stores;
+    let filterSummary: string | undefined;
+
+    // Aplicar filtrado por relevancia si se solicita topN
+    if (options.topN) {
+      console.log(`🤖 Aplicando filtrado por relevancia (top ${options.topN} por tienda)...\n`);
+      
+      filteredResults = await Promise.all(
+        stores.map(async (storeResult) => {
+          if (!storeResult.success || storeResult.products.length === 0) {
+            return storeResult;
+          }
+
+          try {
+            const filtered = await this.llmService.filterProductsByRelevance(
+              storeResult.products,
+              query,
+              options.topN!
+            );
+
+            console.log(`✅ ${storeResult.store}: ${filtered.products.length} productos filtrados`);
+
+            return {
+              ...storeResult,
+              products: filtered.products,
+              count: filtered.products.length,
+            };
+          } catch (error) {
+            console.warn(`⚠️  Error filtrando ${storeResult.store}, mostrando todos`);
+            return storeResult;
+          }
+        })
+      );
+
+      filterSummary = `Top ${options.topN} productos más relevantes por tienda`;
+    }
+
+    // Aplicar filtro en lenguaje natural si se especifica
+    if (options.filter) {
+      console.log(`🤖 Aplicando filtro: "${options.filter}"...\n`);
+      
+      filteredResults = await Promise.all(
+        filteredResults.map(async (storeResult) => {
+          if (!storeResult.success || storeResult.products.length === 0) {
+            return storeResult;
+          }
+
+          try {
+            const filtered = await this.llmService.applyNaturalLanguageFilter(
+              storeResult.products,
+              options.filter!
+            );
+
+            console.log(`✅ ${storeResult.store}: ${filtered.products.length} productos después del filtro`);
+
+            return {
+              ...storeResult,
+              products: filtered.products,
+              count: filtered.products.length,
+            };
+          } catch (error) {
+            console.warn(`⚠️  Error filtrando ${storeResult.store}`);
+            return storeResult;
+          }
+        })
+      );
+
+      filterSummary = options.filter;
+    }
+
+    const duration = Date.now() - startTime;
+    const totalProducts = filteredResults.reduce((sum, r) => sum + r.count, 0);
+    const successfulStores = filteredResults.filter(r => r.success).length;
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`✅ FASE 2 completada en ${(duration / 1000).toFixed(2)}s`);
+    console.log(`📊 Productos después del filtrado: ${totalProducts}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    return {
+      search: query,
+      totalStores: filteredResults.length,
+      successfulStores,
+      totalProducts,
+      stores: filteredResults,
+      duration,
+      filtered: !!(options.topN || options.filter),
+      filterSummary
+    };
+  }
+
+  /**
+   * FASE 3: Ordenado - ordena productos por similaridad entre tiendas
+   */
+  async sortProducts(
+    query: string,
+    stores: StoreSearchResult[]
+  ): Promise<MultiStoreSearchResult> {
+    const startTime = Date.now();
+    
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`🤖 FASE 3: ORDENADO - "${query}"`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    console.log(`🤖 Ordenando productos por similaridad entre tiendas...`);
+    const sortedResults = await this.llmService.sortProductsBySimilarity(
+      stores.map(r => ({ store: r.store, products: r.products })),
+      query
+    );
+
+    // Actualizar resultados con el nuevo orden
+    const finalResults = stores.map(r => {
+      const sorted = sortedResults.find((s: { store: string; products: SimpleProduct[] }) => s.store === r.store);
+      return sorted ? { ...r, products: sorted.products } : r;
+    });
+
+    const duration = Date.now() - startTime;
+    const totalProducts = finalResults.reduce((sum, r) => sum + r.count, 0);
+    const successfulStores = finalResults.filter(r => r.success).length;
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`✅ FASE 3 completada en ${(duration / 1000).toFixed(2)}s`);
+    console.log(`📊 Productos ordenados: ${totalProducts}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    return {
+      search: query,
+      totalStores: finalResults.length,
+      successfulStores,
+      totalProducts,
+      stores: finalResults,
+      duration
+    };
+  }
+
+  /**
    * Busca en una tienda específica
    */
   async searchInStore(
