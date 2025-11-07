@@ -37,7 +37,7 @@ RUN apk add --no-cache \
 
 # Set environment variable to use system Chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./

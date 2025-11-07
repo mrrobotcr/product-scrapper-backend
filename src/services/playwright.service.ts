@@ -26,10 +26,22 @@ export class PlaywrightService {
   async initialize(): Promise<void> {
     if (!this.browser) {
       this.logger.debug('Iniciando Playwright browser...');
-      this.browser = await chromium.launch({
+
+      // En producción Docker, usar Chromium del sistema
+      const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+                           (process.env.NODE_ENV === 'production' ? '/usr/bin/chromium-browser' : undefined);
+
+      const launchOptions: any = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      };
+
+      if (executablePath) {
+        launchOptions.executablePath = executablePath;
+        this.logger.debug(`Usando Chromium del sistema: ${executablePath}`);
+      }
+
+      this.browser = await chromium.launch(launchOptions);
       this.logger.debug('Browser iniciado');
     }
   }
