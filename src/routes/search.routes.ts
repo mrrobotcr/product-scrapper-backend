@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getMultiStoreSearchService } from '../services/multi-store-search.service';
 
-export const searchRouter = Router();
+export const searchRouter: Router = Router();
 
 /**
  * POST /api/search
@@ -40,6 +40,7 @@ searchRouter.post('/', async (req: Request, res: Response, next: NextFunction) =
   } catch (error) {
     console.error('Error en búsqueda multi-tienda:', error);
     next(error);
+    return;
   }
 });
 
@@ -66,6 +67,7 @@ searchRouter.post('/store/:domain', async (req: Request, res: Response, next: Ne
   } catch (error) {
     console.error('Error en búsqueda específica:', error);
     next(error);
+    return;
   }
 });
 
@@ -94,6 +96,7 @@ searchRouter.post('/scrape', async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     console.error('Error en scraping:', error);
     next(error);
+    return;
   }
 });
 
@@ -122,6 +125,7 @@ searchRouter.post('/filter', async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     console.error('Error en filtrado:', error);
     next(error);
+    return;
   }
 });
 
@@ -150,5 +154,6 @@ searchRouter.post('/sort', async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     console.error('Error en ordenado:', error);
     next(error);
+    return;
   }
 });

@@ -29,7 +29,7 @@ export class OpenAIService {
     products: SimpleProduct[],
     query: string,
     topN: number = 15,
-    customFilter?: string
+    _customFilter?: string
   ): Promise<FilterResult> {
     console.log(`🤖 Filtrando ${products.length} productos con Gemini...`);
     console.log(`  🔍 Query: "${query}"`);

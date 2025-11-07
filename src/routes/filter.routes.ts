@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { getOpenAIService } from '../services/openai.service';
 import { SimpleProduct } from '../types/product.types';
 
-export const filterRouter = Router();
+export const filterRouter: Router = Router();
 
 /**
  * POST /api/filter/rank
@@ -27,7 +27,7 @@ filterRouter.post('/rank', async (req: Request, res: Response, next: NextFunctio
     }
 
     const openaiService = getOpenAIService();
-    const result = await openaiService.filterAndRankProducts(
+    const result = await openaiService.filterProductsByRelevance(
       products as SimpleProduct[],
       searchQuery,
       topN
@@ -40,6 +40,7 @@ filterRouter.post('/rank', async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     console.error('Error en filtrado:', error);
     next(error);
+    return;
   }
 });
 
@@ -78,6 +79,7 @@ filterRouter.post('/natural', async (req: Request, res: Response, next: NextFunc
   } catch (error) {
     console.error('Error aplicando filtro:', error);
     next(error);
+    return;
   }
 });
 
@@ -104,7 +106,7 @@ filterRouter.post('/combined', async (req: Request, res: Response, next: NextFun
     }
 
     const openaiService = getOpenAIService();
-    const result = await openaiService.filterAndRankProducts(
+    const result = await openaiService.filterProductsByRelevance(
       scrapedProducts as SimpleProduct[],
       searchQuery,
       topN
@@ -118,5 +120,6 @@ filterRouter.post('/combined', async (req: Request, res: Response, next: NextFun
   } catch (error) {
     console.error('Error en filtrado combinado:', error);
     next(error);
+    return;
   }
 });

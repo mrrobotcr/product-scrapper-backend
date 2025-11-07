@@ -76,7 +76,7 @@ export class SelectorExtractorService {
    * Extrae un atributo de un elemento usando selector y tipo de atributo
    */
   private extractAttribute(
-    $: cheerio.CheerioAPI,
+    _$: cheerio.CheerioAPI,
     $context: cheerio.Cheerio<any>,
     selector: string,
     attribute: string

@@ -1,7 +1,7 @@
 import express from 'express';
 import { ComparisonService } from '../services/comparison.service';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 const comparisonService = new ComparisonService();
 
 export interface CompareRequest {
@@ -110,4 +110,4 @@ router.post('/', async (req: express.Request, res: express.Response) => {
   }
 });
 
-export const compareRouter = router;
+export const compareRouter: express.Router = router;

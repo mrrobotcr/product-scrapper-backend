@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getStoreConfigService } from '../services/store-config.service';
 
-export const storesRouter = Router();
+export const storesRouter: Router = Router();
 
 /**
  * GET /api/stores

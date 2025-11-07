@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getScraperService } from '../services/scraper.service';
-import { ScrapeRequest, ScrapeResponse } from '../types/product.types';
+import { ScrapeRequest } from '../types/product.types';
 import { validateScrapeRequest } from '../middleware/validation';
 
-export const scrapeRouter = Router();
+export const scrapeRouter: Router = Router();
 
 /**
  * POST /api/scrape/url
@@ -72,7 +72,7 @@ scrapeRouter.post('/crawl', validateScrapeRequest, async (req: Request, res: Res
  * GET /api/scrape/status
  * Check scraping service status
  */
-scrapeRouter.get('/status', (req: Request, res: Response) => {
+scrapeRouter.get('/status', (_req: Request, res: Response) => {
   res.json({
     status: 'operational',
     service: 'Playwright + GPT-4 Product Scraper',

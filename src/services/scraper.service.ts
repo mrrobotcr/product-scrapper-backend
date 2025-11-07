@@ -124,9 +124,9 @@ export class ScraperService {
       );
 
       // 6. Verificar si debemos continuar
-      if (paginationInfo.hasNextPage && paginationInfo.nextUrl) {
-        log.debug(`Siguiente página: ${paginationInfo.nextUrl}`);
-        currentUrl = paginationInfo.nextUrl;
+      if (paginationInfo.hasNextPage && paginationInfo.nextPageUrl) {
+        log.debug(`Siguiente página: ${paginationInfo.nextPageUrl}`);
+        currentUrl = paginationInfo.nextPageUrl;
         pageNumber++;
       } else {
         log.debug('No hay más páginas');

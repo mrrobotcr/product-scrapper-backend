@@ -117,9 +117,9 @@ export class PlaywrightService {
       // Obtener el texto visible con fallback
       let text = '';
       try {
-        text = await page.evaluate(() => document.body.innerText);
-      } catch {
         text = await page.textContent('body') || '';
+      } catch {
+        text = '';
       }
       
       // Obtener el título
@@ -149,10 +149,10 @@ export class PlaywrightService {
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
         let totalHeight = 0;
-        const distance = 200;  // Scroll más rápido (antes 100)
-        const maxScrolls = 20;  // Límite de scrolls para evitar páginas infinitas
+        const distance = 200;
+        const maxScrolls = 20;
         let scrollCount = 0;
-        
+
         const timer = setInterval(() => {
           const scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
@@ -163,12 +163,12 @@ export class PlaywrightService {
             clearInterval(timer);
             resolve();
           }
-        }, 50);  // Más rápido (antes 100ms)
+        }, 50);
       });
     });
-    
+
     // Esperar menos después del scroll
-    await page.waitForTimeout(500);  // Reducido de 2000ms
+    await page.waitForTimeout(500);
   }
 
   /**

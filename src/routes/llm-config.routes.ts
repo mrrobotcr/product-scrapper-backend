@@ -2,13 +2,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { getLLMConfig } from '../config/llm-config';
 import { LLMOperation, LLMProvider, AvailableModels } from '../types/llm.types';
 
-export const llmConfigRouter = Router();
+export const llmConfigRouter: Router = Router();
 
 /**
  * GET /api/llm-config
  * Obtiene la configuración actual de providers y modelos
  */
-llmConfigRouter.get('/', (req: Request, res: Response) => {
+llmConfigRouter.get('/', (_req: Request, res: Response) => {
   const config = getLLMConfig();
   
   res.json({
@@ -75,6 +75,7 @@ llmConfigRouter.put('/:operation', (req: Request, res: Response, next: NextFunct
     });
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -120,6 +121,7 @@ llmConfigRouter.post('/batch', (req: Request, res: Response, next: NextFunction)
     });
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -127,7 +129,7 @@ llmConfigRouter.post('/batch', (req: Request, res: Response, next: NextFunction)
  * POST /api/llm-config/reset
  * Resetea la configuración a los valores por defecto
  */
-llmConfigRouter.post('/reset', (req: Request, res: Response, next: NextFunction) => {
+llmConfigRouter.post('/reset', (_req: Request, res: Response, next: NextFunction) => {
   try {
     const config = getLLMConfig();
     config.resetToDefault();
@@ -139,5 +141,6 @@ llmConfigRouter.post('/reset', (req: Request, res: Response, next: NextFunction)
     });
   } catch (error) {
     next(error);
+    return;
   }
 });
