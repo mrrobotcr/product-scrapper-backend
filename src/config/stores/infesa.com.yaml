@@ -13,8 +13,8 @@ search:
 
 # Selectores para extracción de productos en listados
 product_list:
-  container: "table.borde"  # Tabla principal de productos
-  item: "td.numeros table"  # Cada tabla de producto individual
+  container: 'table[cellpadding="0"][cellspacing="2"][align="center"]'  # Tabla principal de productos
+  item: "tbody > tr > td table"  # Cada tabla de producto individual
   
   selectors:
     # URL del producto (no hay páginas de detalle)
@@ -63,7 +63,7 @@ scraping:
   
   # Selectores a esperar antes de extraer en LISTADO de búsqueda
   wait_for_selectors:
-    - "table.borde"               # Esperar la tabla de productos
+    - 'table[cellpadding="0"][cellspacing="2"][align="center"]'  # Esperar la tabla de productos
   
   # Selectores a esperar en PÁGINA DE DETALLE de producto (no aplica)
   wait_for_selectors_detail: []
