@@ -8,7 +8,12 @@ export class StoreConfigService {
   private configDir: string;
 
   constructor() {
-    this.configDir = path.join(__dirname, '../config/stores');
+    // En producción (Docker), los archivos YAML están en /app/config/stores
+    // En desarrollo, están relativos al directorio de servicios
+    const productionPath = '/app/config/stores';
+    const developmentPath = path.join(__dirname, '../config/stores');
+
+    this.configDir = fs.existsSync(productionPath) ? productionPath : developmentPath;
   }
 
   /**

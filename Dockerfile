@@ -48,6 +48,9 @@ RUN pnpm install --prod --frozen-lockfile
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy configuration files (YAML store configs) - they need to be copied separately
+COPY --from=builder /app/src/config ./config
+
 # Expose port
 EXPOSE 3001
 
